@@ -1,0 +1,22 @@
+# ---------------------------------------------------------------------------
+# SECRETS - never commit. The Gmail app password and OAuth files live here.
+# ---------------------------------------------------------------------------
+.env
+credentials.json
+token.json
+client_secret*.json
+
+# Real email captures contain your address and recruiter contact details.
+tests/fixtures/emails/*_real.eml
+scratch/
+
+*.db
+*.sqlite3
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.coverage
+.DS_Store
