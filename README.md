@@ -1,5 +1,7 @@
 # RMIT Job Mailer
 
+![CI](https://github.com/Kanav-Midha/rmit-job-mailer/actions/workflows/ci.yml/badge.svg)
+
 Collects new job postings from RMIT's job boards twice a day and emails you one
 ranked digest. No frontend, no dashboard, no app to check — it arrives in your inbox.
 
