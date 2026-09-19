@@ -78,6 +78,16 @@ PENALTIES = [
     Rule(r"\b\d+\+? years(?:'|\u2019)? experience\b", -20, "years of experience required"),
     Rule(r"\bphd\b|\bmasters? degree required\b", -15, "postgraduate degree required"),
     Rule(r"\b(sydney|brisbane|perth|adelaide|canberra|hobart|darwin)\b", -8, "interstate"),
+    Rule(
+        r"\b(ho chi minh|hanoi|saigon|vietnam|singapore|barcelona)\b",
+        -45,
+        "overseas campus",
+    ),
+    Rule(
+        r"\b(professor|lecturer|teacher|dean|head of school|research fellow|postdoc)\b",
+        -30,
+        "academic staff role",
+    ),
 ]
 
 

@@ -12,7 +12,7 @@ RULES: list[tuple[Category, list[tuple[str, int]]]] = [
         Category.CAMPUS,
         [
             (r"\bstudent ambassador\b", 10),
-            (r"\bcampus\b", 4),
+            (r"\bcampus\b", 2),
             (r"\b(peer mentor|student mentor|learning assistant|lab demonstrator)\b", 8),
             (r"\b(casual|sessional)\b.*\b(student|tutor|assistant)\b", 6),
             (r"\bopen day\b", 5),

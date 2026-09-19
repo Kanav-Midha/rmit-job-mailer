@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 from sqlalchemy.orm import Session
 
@@ -19,7 +20,7 @@ MAX_TITLE, MAX_SHORT = 300, 200
 def _truncate(value: str | None, limit: int) -> str | None:
     if value is None:
         return None
-    value = value.strip()
+    value = re.sub(r"\s+", " ", value).strip()
     return value[:limit] if value else None
 
 

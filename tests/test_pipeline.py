@@ -92,3 +92,53 @@ def test_closing_soon_ranks_higher():
         score(posting(closes_at=soon), Category.SOFTWARE_ENGINEERING)[0]
         > score(posting(closes_at=later), Category.SOFTWARE_ENGINEERING)[0]
     )
+
+
+# --- regressions found by the first live run against RMIT Careers ----------
+
+
+def test_overseas_campus_roles_are_pushed_down():
+    """RMIT has Vietnam campuses. Those jobs are unreachable from Melbourne.
+
+    The first live run returned 40 postings, roughly half of them in Ho Chi Minh
+    City or Hanoi, scoring the same as Melbourne roles because only interstate
+    Australian cities carried a penalty.
+    """
+    melbourne = posting(title="Data Analyst", location="Melbourne VIC")
+    saigon = posting(title="Data Analyst", location="Ho Chi Minh City")
+
+    melbourne_score, _ = score(melbourne, classify(melbourne))
+    saigon_score, reasons = score(saigon, classify(saigon))
+
+    assert saigon_score < melbourne_score
+    assert saigon_score == 0
+    assert "overseas campus" in reasons
+
+
+def test_academic_staff_roles_are_pushed_down():
+    """A third year student cannot apply to be an Associate Professor.
+
+    The live run ranked 'Associate Professor, Computing Technologies' second in
+    the cybersecurity section: 'senior' was penalised but 'professor' was not.
+    """
+    job = posting(title="Associate Professor, Computing Technologies", location="Melbourne VIC")
+    result, reasons = score(job, classify(job))
+    assert result == 0
+    assert "academic staff role" in reasons
+
+
+def test_campus_category_needs_more_than_the_word_campus():
+    """'Campus Security Specialist' is a staff job, not student work.
+
+    The on-campus section is for casual student roles. Matching the bare word
+    'campus' put three staff postings in it on the first live run.
+    """
+    assert classify(posting(title="Campus Security Specialist")) is not Category.CAMPUS
+    assert classify(posting(title="Lecturer, Finance (Hanoi Campus)")) is not Category.CAMPUS
+    assert classify(posting(title="Casual Student Services Assistant")) is Category.CAMPUS
+
+
+def test_titles_with_non_breaking_spaces_are_cleaned(session):
+    """Workday returned 'Associate Learning Designer\xa0-  (06 roles)'."""
+    job, _ = upsert_posting(session, posting(title="Associate Learning\xa0Designer  -  (06 roles)"))
+    assert job.title == "Associate Learning Designer - (06 roles)"
