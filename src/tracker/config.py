@@ -35,6 +35,15 @@ class Settings(BaseSettings):
     workday_delay_seconds: float = Field(default=2.0, ge=1.0)
     workday_max_pages: int = Field(default=5, ge=1, le=20)
 
+    enable_greenhouse: bool = True
+    # Comma-separated Greenhouse board tokens, e.g. "cultureamp,canva".
+    greenhouse_boards: str = "cultureamp"
+    greenhouse_delay_seconds: float = Field(default=1.0, ge=0.5)
+
+    @property
+    def greenhouse_board_list(self) -> list[str]:
+        return [t.strip() for t in self.greenhouse_boards.split(",") if t.strip()]
+
     notify_min_score: int = Field(default=0, ge=0, le=100)
     notify_max_per_run: int = Field(default=60, ge=1)
     log_level: str = "INFO"

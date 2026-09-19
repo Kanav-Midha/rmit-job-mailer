@@ -42,6 +42,11 @@ def _build_sources(args) -> list:
 
         sources.append(WorkdaySource())
 
+    if settings.enable_greenhouse and not args.no_greenhouse:
+        from tracker.ingest.greenhouse_source import GreenhouseSource
+
+        sources.append(GreenhouseSource())
+
     return sources
 
 
@@ -76,6 +81,11 @@ def cmd_check(_args) -> int:
             Path(s.gmail_token_file).exists(),
         ),
         ("RMIT Careers", "enabled" if s.enable_workday else "disabled", True),
+        (
+            "Company boards",
+            ", ".join(s.greenhouse_board_list) if s.enable_greenhouse else "disabled",
+            bool(s.greenhouse_board_list) or not s.enable_greenhouse,
+        ),
         ("Min score to email", str(s.notify_min_score), True),
     ]
     width = max(len(name) for name, _, _ in rows)
@@ -199,6 +209,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_cmd.add_argument("--dry-run", action="store_true", help="print instead of sending")
     run_cmd.add_argument("--no-gmail", action="store_true", help="skip Career Centre emails")
     run_cmd.add_argument("--no-workday", action="store_true", help="skip RMIT Careers")
+    run_cmd.add_argument("--no-greenhouse", action="store_true", help="skip company boards")
     run_cmd.set_defaults(func=cmd_run)
 
     listing = sub.add_parser("list", help="show stored postings")
