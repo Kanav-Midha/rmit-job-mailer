@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 import re
 from datetime import datetime
+from urllib.parse import parse_qs, unquote, urlparse
 
 from bs4 import BeautifulSoup, Tag
 from dateutil import parser as date_parser
@@ -38,6 +39,11 @@ NOISE_TEXT = re.compile(
     r"log ?in|sign ?in|update your details|click here|home|more jobs?)$",
     re.I,
 )
+
+SAFELINK_HOST = re.compile(r"safelinks\.protection\.outlook\.com$", re.I)
+
+# An anchor whose visible text is just the link itself carries no job title.
+URL_LIKE = re.compile(r"^(https?://|www\.)", re.I)
 
 LABELLED_FIELD = re.compile(
     r"(?P<label>company|employer|organisation|organization|location|based in|closes|"
@@ -68,10 +74,31 @@ def _parse_date(value: str | None) -> datetime | None:
         return None
 
 
+def unwrap_safelink(href: str) -> str:
+    """Return the real destination behind an Outlook SafeLinks wrapper.
+
+    RMIT sends through Microsoft 365, which rewrites every link to
+    aus01.safelinks.protection.outlook.com and puts the real URL in the `url`
+    query parameter. Two reasons this matters beyond tidiness: the wrapper is
+    ~600 characters of noise in the digest, and it carries the sending staff
+    member's email address, which has no business in our database.
+    """
+    try:
+        parsed = urlparse(href)
+    except ValueError:
+        return href
+    if not SAFELINK_HOST.search(parsed.netloc or ""):
+        return href
+    target = parse_qs(parsed.query).get("url", [None])[0]
+    return unquote(target) if target else href
+
+
 def _is_job_link(href: str, text: str) -> bool:
     if not href or not text or len(text.strip()) < 4:
         return False
     if NOISE_TEXT.match(text.strip()):
+        return False
+    if URL_LIKE.match(text.strip()):
         return False
     return any(pattern.search(href) for pattern in JOB_URL_PATTERNS)
 
@@ -124,7 +151,7 @@ def parse(message: RawMessage) -> list[RawPosting]:
     seen_urls: set[str] = set()
 
     for anchor in soup.find_all("a", href=True):
-        href = anchor["href"].strip()
+        href = unwrap_safelink(anchor["href"].strip())
         title = _clean(anchor.get_text(" ", strip=True))
         if not title or not _is_job_link(href, title) or href in seen_urls:
             continue
