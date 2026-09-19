@@ -1,0 +1,58 @@
+name: Check for jobs
+
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   MAIL_TO                 where the digest goes
+#   SMTP_USERNAME           your Gmail address
+#   SMTP_PASSWORD           a Gmail App Password, not your account password
+#   DATABASE_URL            a Postgres URL, so state survives between runs
+#   GMAIL_TOKEN_JSON        contents of token.json after running `tracker auth` locally
+#   GMAIL_CREDENTIALS_JSON  contents of credentials.json
+#
+# SQLite will NOT work here. Each run gets a fresh runner and the file is discarded,
+# so every posting would look new and you would be emailed the same jobs forever.
+# Use a free Postgres tier (Supabase or Neon).
+
+on:
+  schedule:
+    # 08:00 and 18:00 Melbourne time. GitHub cron is UTC and ignores DST, so these
+    # drift by an hour between AEST and AEDT.
+    - cron: "0 22 * * *"
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: job-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install --upgrade pip && pip install -e ".[gmail,postgres]"
+
+      - name: Restore Gmail credentials
+        env:
+          GMAIL_TOKEN_JSON: ${{ secrets.GMAIL_TOKEN_JSON }}
+          GMAIL_CREDENTIALS_JSON: ${{ secrets.GMAIL_CREDENTIALS_JSON }}
+        run: |
+          printf '%s' "$GMAIL_TOKEN_JSON" > token.json
+          printf '%s' "$GMAIL_CREDENTIALS_JSON" > credentials.json
+
+      - name: Collect and email
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          MAIL_FROM: ${{ secrets.SMTP_USERNAME }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+        run: python -m tracker.cli run
+
+      - name: Remove credential files
+        if: always()
+        run: rm -f token.json credentials.json
