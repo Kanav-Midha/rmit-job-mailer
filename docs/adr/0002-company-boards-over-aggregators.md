@@ -1,7 +1,19 @@
 # ADR 0002: Read company job boards directly, not aggregators
 
-- Status: accepted
+- Status: accepted, but the source is currently switched off
 - Date: 2026-09
+
+> **Update, later in 2026-09.** The Greenhouse source is built, tested and working,
+> and `ENABLE_GREENHOUSE=false` in both `.env` and the scheduled workflow. The
+> decision below is unchanged and the reasoning still holds: if you want graduate
+> roles at technology companies, reading their boards directly is the right way to
+> get them. What changed is the goal. This tracker is now scoped to RMIT's own
+> vacancies, and a company board search is a different search. Setting
+> `GREENHOUSE_BOARDS` and flipping the flag brings it back with no code change,
+> which was the point of making it configuration.
+>
+> The Gmail source is off for a different reason, recorded in the Context below: it
+> was never able to deliver postings in the first place.
 
 ## Context
 
