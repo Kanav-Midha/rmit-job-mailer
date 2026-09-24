@@ -15,7 +15,7 @@ from tracker.config import get_settings
 from tracker.db import session_scope
 from tracker.ingest.base import MessageSource, PostingSource
 from tracker.ingest.parsers.registry import parse_message
-from tracker.models import Job, utcnow
+from tracker.models import Category, Job, utcnow
 from tracker.pipeline.normalise import upsert_posting
 from tracker.schemas import RawPosting, RunResult
 
@@ -77,12 +77,21 @@ def run(sources: list, mailer, dry_run: bool = False) -> RunResult:
     # Everything never emailed, above the threshold. Includes anything a previous
     # run collected but failed to send.
     with session_scope() as session:
+        query = select(Job).where(
+            Job.emailed_at.is_(None), Job.score >= settings.notify_min_score
+        )
+
+        # A posting filtered out here keeps emailed_at NULL, so widening the
+        # categories later sends the backlog rather than silently losing it.
+        wanted = settings.notify_category_list
+        if wanted:
+            query = query.where(Job.category.in_([Category(c) for c in wanted]))
+
         pending = list(
             session.scalars(
-                select(Job)
-                .where(Job.emailed_at.is_(None), Job.score >= settings.notify_min_score)
-                .order_by(Job.score.desc(), Job.first_seen_at.desc())
-                .limit(settings.notify_max_per_run)
+                query.order_by(Job.score.desc(), Job.first_seen_at.desc()).limit(
+                    settings.notify_max_per_run
+                )
             ).all()
         )
 

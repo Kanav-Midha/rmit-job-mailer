@@ -48,6 +48,13 @@ API_PATH = "/wday/cxs/rmit/RMIT_Careers/jobs"
 PUBLIC_PATH = "/en-US/RMIT_Careers"
 PAGE_SIZE = 20
 
+# Workday's Country facet. RMIT posts from Melbourne and its Vietnam campuses in
+# one feed, and the Vietnam roles outnumber the Australian ones roughly 3 to 1.
+# Asking the API for Australia is exact and server-side; guessing from city names
+# would break the first time RMIT opened a campus we had not heard of.
+COUNTRY_FACET = "Country"
+AUSTRALIA = "d903bb3fedad45039383f6de334ad4db"
+
 USER_AGENT = (
     "rmit-job-mailer/1.0 (personal job alert tool for one RMIT student; "
     "contact via the GitHub repository)"
@@ -117,6 +124,7 @@ class WorkdaySource(PostingSource):
         self.search_text = search_text if search_text is not None else settings.workday_search_text
         self.delay = max(1.0, settings.workday_delay_seconds)
         self.max_pages = settings.workday_max_pages
+        self.country = settings.workday_country_facet or None
 
     def fetch(self) -> list[RawPosting]:
         url = f"{HOST}{API_PATH}"
@@ -125,6 +133,7 @@ class WorkdaySource(PostingSource):
 
         postings: list[RawPosting] = []
         seen_paths: set[str] = set()
+        reported_total: int | None = None
         headers = {
             "User-Agent": USER_AGENT,
             "Content-Type": "application/json",
@@ -134,8 +143,9 @@ class WorkdaySource(PostingSource):
         with httpx.Client(timeout=30.0, headers=headers, follow_redirects=True) as client:
             for page in range(self.max_pages):
                 offset = page * PAGE_SIZE
+                facets = {COUNTRY_FACET: [self.country]} if self.country else {}
                 payload = {
-                    "appliedFacets": {},
+                    "appliedFacets": facets,
                     "limit": PAGE_SIZE,
                     "offset": offset,
                     "searchText": self.search_text,
@@ -188,10 +198,32 @@ class WorkdaySource(PostingSource):
                         )
                     )
 
-                total = data.get("total")
-                if total is not None and offset + PAGE_SIZE >= total:
+                reported_total = data.get("total") or reported_total
+
+                # Stop on a short page, not on `total`. Workday reports `total`
+                # relative to the offset on later pages, so trusting it quit after
+                # two pages and silently dropped 11 of 51 postings.
+                if len(items) < PAGE_SIZE:
                     break
+                if page == self.max_pages - 1:
+                    logger.warning(
+                        "Stopped at the WORKDAY_MAX_PAGES limit of %d pages. There may "
+                        "be more postings; raise the limit.",
+                        self.max_pages,
+                    )
                 time.sleep(self.delay)
 
-        logger.info("RMIT Careers returned %d postings", len(postings))
+        if reported_total and len(postings) < reported_total:
+            logger.warning(
+                "RMIT Careers reported %d postings but only %d were collected. "
+                "Some are being missed.",
+                reported_total,
+                len(postings),
+            )
+
+        logger.info(
+            "RMIT Careers returned %d postings (site reports %s)",
+            len(postings),
+            reported_total if reported_total else "unknown",
+        )
         return postings

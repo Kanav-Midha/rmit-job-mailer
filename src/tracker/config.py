@@ -34,7 +34,10 @@ class Settings(BaseSettings):
     enable_workday: bool = True
     workday_search_text: str = ""
     workday_delay_seconds: float = Field(default=2.0, ge=1.0)
-    workday_max_pages: int = Field(default=5, ge=1, le=20)
+    workday_max_pages: int = Field(default=10, ge=1, le=50)
+    # Workday Country facet id. Default is Australia; blank fetches every country,
+    # which for RMIT means the Vietnam campuses as well.
+    workday_country_facet: str = "d903bb3fedad45039383f6de334ad4db"
 
     enable_greenhouse: bool = True
     # Comma-separated Greenhouse board tokens, e.g. "cultureamp,canva".
@@ -46,8 +49,17 @@ class Settings(BaseSettings):
         return [t.strip() for t in self.greenhouse_boards.split(",") if t.strip()]
 
     notify_min_score: int = Field(default=0, ge=0, le=100)
+    # Comma-separated category names to email, e.g. "campus". Empty means all.
+    # Use this to say "only the jobs I can actually apply to" precisely, instead
+    # of hoping a score threshold happens to cut in the right place.
+    notify_categories: str = ""
+
     notify_max_per_run: int = Field(default=60, ge=1)
     log_level: str = "INFO"
+
+    @property
+    def notify_category_list(self) -> list[str]:
+        return [c.strip().lower() for c in self.notify_categories.split(",") if c.strip()]
 
     @property
     def smtp_configured(self) -> bool:

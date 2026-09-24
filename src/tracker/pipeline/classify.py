@@ -23,6 +23,13 @@ RULES: list[tuple[Category, list[tuple[str, int]]]] = [
                 8,
             ),
             (r"\b(note ?taker|exam supervisor|invigilator)\b", 8),
+            # Library work is one of the most common casual student jobs on campus.
+            # Scoped to the junior titles: "Manager, Library Services" is staff.
+            (r"\blibrary (assistant|officer|attendant|aide|shelver)\b", 9),
+            (r"\b(orientation|welcome) (leader|assistant|guide|crew)\b", 9),
+            (r"\b(campus |student )?tour guide\b", 8),
+            (r"\bstudent (life|engagement|experience|support)\b", 6),
+            (r"\b(casual|student) (tutor|demonstrator|marker)\b", 8),
             (r"\b(casual|sessional)\b.*\b(student|tutor|assistant)\b", 6),
             (r"\bopen day\b", 5),
         ],

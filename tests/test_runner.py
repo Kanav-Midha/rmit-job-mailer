@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from tracker.config import get_settings
 from tracker.ingest.base import PostingSource
 from tracker.models import Job
 from tracker.notify.mailer import MailError
@@ -101,3 +102,61 @@ def test_dry_run_does_not_mark_anything_as_emailed(session):
     mailer = RecordingMailer()
     run([FakeSource(sample(2))], mailer, dry_run=True)
     assert session.query(Job).filter(Job.emailed_at.is_(None)).count() == 2
+
+
+# --- "only the jobs I can actually apply to" -------------------------------
+
+
+def student_and_staff():
+    """One role a student can apply for, one they cannot."""
+    return [
+        RawPosting(title="Casual Library Assistant", company="RMIT University",
+                   location="Melbourne", source="workday"),
+        RawPosting(title="RMIT Council Member", company="RMIT University",
+                   location="Melbourne", source="workday"),
+    ]
+
+
+def test_notify_categories_limits_the_digest_to_student_roles(session, monkeypatch):
+    """RMIT posts mostly staff vacancies. A student wants the campus section only.
+
+    A score threshold only approximates that: a new professional role could score
+    above the line and slip in. Naming the category says it exactly.
+    """
+    monkeypatch.setenv("NOTIFY_CATEGORIES", "campus")
+    get_settings.cache_clear()
+
+    mailer = RecordingMailer()
+    run([FakeSource(student_and_staff())], mailer)
+
+    get_settings.cache_clear()
+    assert mailer.batches == [["Casual Library Assistant"]]
+
+
+def test_an_empty_category_list_means_everything(session, monkeypatch):
+    monkeypatch.setenv("NOTIFY_CATEGORIES", "")
+    monkeypatch.setenv("NOTIFY_MIN_SCORE", "0")
+    get_settings.cache_clear()
+
+    mailer = RecordingMailer()
+    run([FakeSource(student_and_staff())], mailer)
+
+    get_settings.cache_clear()
+    assert sorted(mailer.batches[0]) == ["Casual Library Assistant", "RMIT Council Member"]
+
+
+def test_a_filtered_posting_is_not_marked_sent(session, monkeypatch):
+    """Widening the categories later must deliver the backlog, not lose it."""
+    monkeypatch.setenv("NOTIFY_CATEGORIES", "campus")
+    get_settings.cache_clear()
+    run([FakeSource(student_and_staff())], RecordingMailer())
+
+    monkeypatch.setenv("NOTIFY_CATEGORIES", "")
+    monkeypatch.setenv("NOTIFY_MIN_SCORE", "0")
+    get_settings.cache_clear()
+
+    mailer = RecordingMailer()
+    run([], mailer)
+    get_settings.cache_clear()
+
+    assert mailer.batches == [["RMIT Council Member"]]
