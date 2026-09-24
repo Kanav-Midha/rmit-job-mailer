@@ -1,23 +1,21 @@
 name: Check for jobs
 
 # Required repository secrets (Settings -> Secrets and variables -> Actions):
-#   MAIL_TO                 where the digest goes
-#   SMTP_USERNAME           your Gmail address
-#   SMTP_PASSWORD           a Gmail App Password, not your account password
-#   DATABASE_URL            a Postgres URL, so state survives between runs
-#   GMAIL_TOKEN_JSON        contents of token.json after running `tracker auth` locally
-#   GMAIL_CREDENTIALS_JSON  contents of credentials.json
+#   MAIL_TO         where the digest goes
+#   SMTP_USERNAME   your Gmail address
+#   SMTP_PASSWORD   a Gmail App Password, not your account password
+#   DATABASE_URL    a Postgres URL, pasted exactly as the provider gives it
 #
-# SQLite will NOT work here. Each run gets a fresh runner and the file is discarded,
-# so every posting would look new and you would be emailed the same jobs forever.
-# Use a free Postgres tier (Supabase or Neon).
+# SQLite will NOT work here. Each run gets a fresh runner and the file is thrown
+# away with it, so every posting would look new and the same jobs would arrive
+# every morning forever. Use a free Postgres tier (Neon or Supabase).
 
 on:
   schedule:
-    # 08:00 and 18:00 Melbourne time. GitHub cron is UTC and ignores DST, so these
-    # drift by an hour between AEST and AEDT.
+    # 08:00 Melbourne time. GitHub cron is UTC and ignores daylight saving, so
+    # this arrives at 08:00 during AEST and 09:00 during AEDT. Add a second
+    # cron line for a twice-daily check.
     - cron: "0 22 * * *"
-    - cron: "0 8 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -27,6 +25,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -34,15 +33,7 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - run: pip install --upgrade pip && pip install -e ".[gmail,postgres]"
-
-      - name: Restore Gmail credentials
-        env:
-          GMAIL_TOKEN_JSON: ${{ secrets.GMAIL_TOKEN_JSON }}
-          GMAIL_CREDENTIALS_JSON: ${{ secrets.GMAIL_CREDENTIALS_JSON }}
-        run: |
-          printf '%s' "$GMAIL_TOKEN_JSON" > token.json
-          printf '%s' "$GMAIL_CREDENTIALS_JSON" > credentials.json
+      - run: pip install --upgrade pip && pip install -e ".[postgres]"
 
       - name: Collect and email
         env:
@@ -51,8 +42,28 @@ jobs:
           MAIL_FROM: ${{ secrets.SMTP_USERNAME }}
           SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-        run: python -m tracker.cli run
 
-      - name: Remove credential files
-        if: always()
-        run: rm -f token.json credentials.json
+          # .env is gitignored, so it does not exist on the runner. Anything not
+          # named here silently falls back to the defaults in config.py, and the
+          # scheduled run then behaves differently from the run tested locally.
+          # That is worth stating even where the value matches the default.
+
+          # RMIT's own vacancies, Australian campuses only. Without the country
+          # facet the digest is three-quarters Vietnam roles.
+          ENABLE_WORKDAY: "true"
+          WORKDAY_COUNTRY_FACET: "d903bb3fedad45039383f6de334ad4db"
+          WORKDAY_MAX_PAGES: "10"
+
+          # Both off for now, which is why this workflow needs no Gmail secrets.
+          # The Career Centre path delivers a link to a list rather than the list
+          # itself (ADR 0002); company boards are a separate search. Turning
+          # either on means restoring its own configuration first.
+          ENABLE_GMAIL: "false"
+          ENABLE_GREENHOUSE: "false"
+
+          # Send every new Australian posting. There are about fourteen live at
+          # any time, which is few enough that a filter can only lose one.
+          NOTIFY_MIN_SCORE: "0"
+          NOTIFY_CATEGORIES: ""
+          NOTIFY_MAX_PER_RUN: "60"
+        run: python -m tracker.cli run
