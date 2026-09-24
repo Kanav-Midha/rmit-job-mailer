@@ -7,11 +7,11 @@
 
 "Every job posted on the RMIT website" is three different systems:
 
-1. **Career Centre** (`rmit.careercentre.me`) — RMIT's student jobs board, roughly
+1. **Career Centre** (`rmit.careercentre.me`) is RMIT's student jobs board, roughly
    150+ postings added weekly. Behind a student login.
-2. **RMIT Careers** (`rmit.wd3.myworkdayjobs.com`) — RMIT's own vacancies, including
+2. **RMIT Careers** (`rmit.wd3.myworkdayjobs.com`) carries RMIT's own vacancies, including
    the casual on-campus work students want. Public, no login.
-3. **Prosple** (`rmit.prosple.com`) — a partner graduate directory that mirrors much
+3. **Prosple** (`rmit.prosple.com`) is a partner graduate directory that mirrors much
    of the Career Centre.
 
 Each needs a different access decision.
@@ -43,7 +43,7 @@ test fixtures, which makes the fragile parsing logic testable offline. The Workd
 path needs no auth and breaks loudly rather than silently.
 
 Bad: Career Centre coverage is limited to what your saved searches match, so search
-configuration becomes a setup step rather than a code concern — if a search is too
+configuration becomes a setup step rather than a code concern. If a search is too
 narrow, the tracker cannot know what it is missing. Email alerts also carry fewer
 fields than the full listing. The Workday endpoint is undocumented and may change or
 be restricted at any time; `ENABLE_WORKDAY=false` turns it off, and the site's own

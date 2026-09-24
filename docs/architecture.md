@@ -21,8 +21,8 @@ and exits.
 
 ## Two kinds of source
 
-`MessageSource` returns `RawMessage` objects that still need parsing — emails.
-`PostingSource` returns `RawPosting` objects directly — structured feeds like Workday.
+`MessageSource` returns `RawMessage` objects that still need parsing, such as emails.
+`PostingSource` returns `RawPosting` objects directly, from structured feeds like Workday.
 The runner handles both, so adding a structured source needs no parser.
 
 ## Why one digest instead of one email per job
@@ -41,7 +41,7 @@ The runner sends the email **before** marking anything as emailed:
 4. Only then set `emailed_at`.
 
 If step 3 fails, nothing is marked, so the next run picks up the same postings plus
-any newer ones. The alternative ordering loses postings silently on any SMTP hiccup —
+any newer ones. The alternative ordering loses postings silently on any SMTP hiccup,
 which is the one failure this tool must not have. `test_send_failure_leaves_postings_pending_for_the_next_run`
 covers exactly this.
 
@@ -59,7 +59,7 @@ to parse is logged and skipped; the others still process. Errors accumulate in
 
 ## Data model
 
-One table. `content_hash` is a SHA-256 of the normalised title, employer and location —
+One table. `content_hash` is a SHA-256 of the normalised title, employer and location,
 deliberately excluding the URL, because the same posting arrives with different
 tracking parameters on different days. `emailed_at` is the send ledger.
 

@@ -3,7 +3,7 @@
 ![CI](https://github.com/Kanav-Midha/rmit-job-mailer/actions/workflows/ci.yml/badge.svg)
 
 Collects new job postings from RMIT's job boards twice a day and emails you one
-ranked digest. No frontend, no dashboard, no app to check — it arrives in your inbox.
+ranked digest. No frontend, no dashboard, no app to check. It arrives in your inbox.
 
 ```
   Career Centre alerts ──▶ Gmail ──┐
@@ -20,8 +20,8 @@ ranked digest. No frontend, no dashboard, no app to check — it arrives in your
   limits itself, and backs off on 403 or 429.
 - Deduplicates on a content hash with a fuzzy fallback, so a posting that appears in
   every daily alert for a fortnight is emailed exactly once.
-- Groups by category — software engineering, machine learning, data science,
-  cybersecurity, on-campus, everything else — and ranks within each group by how well
+- Groups by category (software engineering, machine learning, data science,
+  cybersecurity, on-campus, everything else) and ranks within each group by how well
   it fits a third-year international student in Melbourne.
 - Sends one email. Never the same posting twice. Never drops one on a send failure.
 
@@ -150,14 +150,14 @@ cannot be committed by accident.
 
 ## Terms of use
 
-Career Centre is read only through email alerts it offers deliberately — the portal is
+Career Centre is read only through email alerts it offers deliberately. The portal is
 never scraped and no university credentials are stored. RMIT Careers is read through
 the public JSON endpoint its own public page uses, with `robots.txt` checked first and
 conservative rate limiting.
 
 This is not legal advice. Read RMIT's terms and satisfy yourself before running the
 Workday source on a schedule. `ENABLE_WORKDAY=false` turns it off, and that site's own
-"create job alert" feature is the fallback — those emails get ingested through Gmail
+"create job alert" feature is the fallback, and those emails get ingested through Gmail
 like any other alert. The reasoning is in
 [ADR 0001](docs/adr/0001-sources-and-terms-of-use.md).
 
