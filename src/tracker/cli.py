@@ -131,8 +131,12 @@ def cmd_run(args) -> int:
         f"emailed={result.jobs_emailed}"
     )
     for error in result.errors:
-        print(f"  warning: {error}", file=sys.stderr)
-    return 0
+        print(f"  error: {error}", file=sys.stderr)
+
+    # Exit non-zero so a broken source turns the scheduled run red. A green run
+    # that quietly collected nothing is indistinguishable from a day with no new
+    # postings, which is the one failure you would never notice.
+    return 1 if result.errors else 0
 
 
 def cmd_test_email(_args) -> int:

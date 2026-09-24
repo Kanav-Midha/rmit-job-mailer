@@ -10,6 +10,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
+from tracker.ingest.base import SourceUnavailable
 from tracker.ingest.workday_source import AUSTRALIA, COUNTRY_FACET, PAGE_SIZE, WorkdaySource
 
 
@@ -121,3 +122,59 @@ def test_a_shortfall_against_the_reported_total_is_logged(source, monkeypatch, c
     with caplog.at_level("WARNING"):
         source.fetch()
     assert any("only 20 were collected" in r.getMessage() for r in caplog.records)
+
+
+# --- an empty result must not be mistaken for a quiet day ---------------------
+#
+# Every silent failure ends the same way: fetch() returns nothing, the run exits
+# green, no digest is sent. From the inbox that is identical to RMIT having
+# posted nothing overnight, which is the one failure nobody would ever notice.
+# RMIT always advertises a dozen or so Australian roles, so zero is a bug.
+
+
+def test_an_empty_response_raises_rather_than_returning_nothing(source, monkeypatch):
+    mock_pages(monkeypatch, [{"total": 0, "jobPostings": []}])
+    with pytest.raises(SourceUnavailable, match="expected at least"):
+        source.fetch()
+
+
+def test_a_blocked_request_raises(source, monkeypatch):
+    """403 and 429 break out of the loop with nothing collected."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(403, text="Forbidden")
+
+    real_client = httpx.Client
+    monkeypatch.setattr(
+        "tracker.ingest.workday_source.httpx.Client",
+        lambda *a, **kw: real_client(*a, **{**kw, "transport": httpx.MockTransport(handler)}),
+    )
+    with pytest.raises(SourceUnavailable):
+        source.fetch()
+
+
+def test_a_robots_refusal_raises_and_says_what_to_do(monkeypatch):
+    """The case that prompted all of this: robots.txt unreachable or disallowing
+    returns an empty list before a single request is made."""
+    monkeypatch.setattr("tracker.ingest.workday_source._robots_allows", lambda url: False)
+    with pytest.raises(SourceUnavailable, match="robots.txt"):
+        WorkdaySource().fetch()
+
+
+def test_the_check_can_be_switched_off(monkeypatch):
+    """A fork pointing at a country with no vacancies needs to allow an empty run."""
+    monkeypatch.setenv("WORKDAY_MIN_EXPECTED", "0")
+    from tracker.config import get_settings
+
+    get_settings.cache_clear()
+    monkeypatch.setattr("tracker.ingest.workday_source._robots_allows", lambda url: False)
+    try:
+        assert WorkdaySource().fetch() == []
+    finally:
+        get_settings.cache_clear()
+
+
+def test_one_posting_is_enough_to_pass(source, monkeypatch):
+    """The guard catches zero, not a genuinely thin day."""
+    mock_pages(monkeypatch, [page(0, 1, 1)])
+    assert len(source.fetch()) == 1

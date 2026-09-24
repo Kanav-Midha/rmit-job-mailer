@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     # Workday Country facet id. Default is Australia; blank fetches every country,
     # which for RMIT means the Vietnam campuses as well.
     workday_country_facet: str = "d903bb3fedad45039383f6de334ad4db"
+    # Fewest postings a healthy run should collect. RMIT always advertises a
+    # dozen or so Australian roles, so anything below this means the source is
+    # broken rather than the day being quiet, and the run should fail loudly.
+    # 0 disables the check.
+    workday_min_expected: int = Field(default=1, ge=0)
 
     enable_greenhouse: bool = True
     # Comma-separated Greenhouse board tokens, e.g. "cultureamp,canva".

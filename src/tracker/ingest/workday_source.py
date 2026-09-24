@@ -37,7 +37,7 @@ import httpx
 from dateutil import parser as date_parser
 
 from tracker.config import get_settings
-from tracker.ingest.base import PostingSource
+from tracker.ingest.base import PostingSource, SourceUnavailable
 from tracker.schemas import RawPosting
 
 logger = logging.getLogger(__name__)
@@ -125,10 +125,19 @@ class WorkdaySource(PostingSource):
         self.delay = max(1.0, settings.workday_delay_seconds)
         self.max_pages = settings.workday_max_pages
         self.country = settings.workday_country_facet or None
+        self.min_expected = settings.workday_min_expected
 
     def fetch(self) -> list[RawPosting]:
         url = f"{HOST}{API_PATH}"
         if not _robots_allows(url):
+            if self.min_expected:
+                raise SourceUnavailable(
+                    "robots.txt did not allow this request, so nothing was collected. "
+                    "If it was merely unreachable, the next run recovers on its own. If "
+                    "RMIT now disallows this path, that is their decision and this source "
+                    "should stay off: set ENABLE_WORKDAY=false and use the site's own job "
+                    "alerts instead."
+                )
             return []
 
         postings: list[RawPosting] = []
@@ -226,4 +235,19 @@ class WorkdaySource(PostingSource):
             len(postings),
             reported_total if reported_total else "unknown",
         )
+
+        # An empty result is not a quiet day. RMIT always has roles advertised, so
+        # zero means robots.txt refused, the endpoint moved, the request was
+        # blocked, or the JSON changed shape. Every one of those is otherwise
+        # silent: the run exits green, no digest goes out, and an empty inbox is
+        # indistinguishable from "nothing new". Failing loudly is the only way to
+        # tell those apart from the outside.
+        if self.min_expected and len(postings) < self.min_expected:
+            raise SourceUnavailable(
+                f"RMIT Careers returned {len(postings)} postings, expected at least "
+                f"{self.min_expected}. A warning above says why: robots.txt, an HTTP "
+                f"status, or unreadable JSON. Set WORKDAY_MIN_EXPECTED=0 to accept an "
+                f"empty result."
+            )
+
         return postings

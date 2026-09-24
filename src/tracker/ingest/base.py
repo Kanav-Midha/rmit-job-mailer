@@ -13,6 +13,16 @@ from datetime import datetime
 from tracker.schemas import RawPosting
 
 
+class SourceUnavailable(RuntimeError):
+    """A source could not deliver what it should have.
+
+    This exists to make a specific failure loud. A source that returns nothing
+    looks, from the inbox, exactly like a quiet day with no new postings: the run
+    exits green, no digest is sent, and nothing is wrong as far as anyone can
+    tell. Raising instead turns that silence into a failed run.
+    """
+
+
 @dataclass
 class RawMessage:
     message_id: str
