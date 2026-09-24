@@ -29,7 +29,7 @@ def _build_sources(args) -> list:
     sources = []
     settings = get_settings()
 
-    if not args.no_gmail:
+    if settings.enable_gmail and not args.no_gmail:
         try:
             from tracker.ingest.gmail_source import GmailSource
 
@@ -75,6 +75,11 @@ def cmd_check(_args) -> int:
         ("SMTP host", f"{s.smtp_host}:{s.smtp_port}", bool(s.smtp_host)),
         ("SMTP user", s.smtp_username or "not set", bool(s.smtp_username)),
         ("SMTP password", "set" if s.smtp_password else "not set", bool(s.smtp_password)),
+        (
+            "Career Centre email",
+            "enabled" if s.enable_gmail else "disabled",
+            True,
+        ),
         (
             "Gmail token",
             s.gmail_token_file,

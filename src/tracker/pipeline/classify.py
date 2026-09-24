@@ -14,6 +14,15 @@ RULES: list[tuple[Category, list[tuple[str, int]]]] = [
             (r"\bstudent ambassador\b", 10),
             (r"\bcampus\b", 2),
             (r"\b(peer mentor|student mentor|learning assistant|lab demonstrator)\b", 8),
+            (r"\bpeer (advisor|adviser|support|tutor|leader|coach)\b", 9),
+            (
+                # One optional word between, for titles like
+                # "Student Learning Adviser" and "Student Services Assistant".
+                r"\bstudent (\w+ )?(advisor|adviser|assistant|leader|representative|"
+                r"partner|supervisor)\b",
+                8,
+            ),
+            (r"\b(note ?taker|exam supervisor|invigilator)\b", 8),
             (r"\b(casual|sessional)\b.*\b(student|tutor|assistant)\b", 6),
             (r"\bopen day\b", 5),
         ],

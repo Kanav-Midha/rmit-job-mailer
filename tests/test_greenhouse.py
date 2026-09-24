@@ -111,3 +111,30 @@ def test_greenhouse_postings_flow_through_the_existing_pipeline(title, expected)
     result, reasons = score(posting, category)
     assert result > 0
     assert "Melbourne" in reasons
+
+
+# --- source switches -------------------------------------------------------
+
+
+def test_every_source_can_be_switched_off_by_config():
+    """Sources are turned on and off in .env, not by editing code.
+
+    Wanting only RMIT's own vacancies should not require a code change, and
+    neither should adding company boards back later.
+    """
+    from tracker.config import Settings
+
+    only_rmit = Settings(enable_gmail=False, enable_greenhouse=False, enable_workday=True)
+    assert not only_rmit.enable_gmail
+    assert not only_rmit.enable_greenhouse
+    assert only_rmit.enable_workday
+
+
+def test_board_list_is_parsed_from_a_comma_separated_string():
+    from tracker.config import Settings
+
+    assert Settings(greenhouse_boards="cultureamp, canva ,").greenhouse_board_list == [
+        "cultureamp",
+        "canva",
+    ]
+    assert Settings(greenhouse_boards="").greenhouse_board_list == []

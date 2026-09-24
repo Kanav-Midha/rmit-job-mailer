@@ -142,3 +142,41 @@ def test_titles_with_non_breaking_spaces_are_cleaned(session):
     """Workday returned 'Associate Learning Designer\xa0-  (06 roles)'."""
     job, _ = upsert_posting(session, posting(title="Associate Learning\xa0Designer  -  (06 roles)"))
     assert job.title == "Associate Learning Designer - (06 roles)"
+
+
+def test_student_facing_casual_roles_reach_the_campus_section():
+    """'Global Experience Peer Advisor' is casual student work at RMIT Melbourne.
+
+    It scored 0 and was filtered out of the digest on 24 September because the
+    campus rules knew 'peer mentor' but not 'peer advisor'. These are the roles
+    the on-campus section exists for, so a near-miss on wording is the one
+    failure it cannot afford.
+    """
+    for title in [
+        "Global Experience Peer Advisor",
+        "Peer Support Leader",
+        "Student Learning Adviser",
+        "Exam Supervisor",
+    ]:
+        assert classify(posting(title=title)) is Category.CAMPUS, title
+
+
+def test_widening_campus_rules_did_not_catch_staff_roles():
+    """The previous fix pushed security and lecturer jobs out of on-campus.
+
+    Widening the rules must not quietly undo that.
+    """
+    for title in [
+        "Campus Security Specialist",
+        "Student Communications Coordinator",
+        "Lecturer, Finance (Hanoi Campus)",
+        "Research Assistant, HAMR-TEI (Part-time, 04-month & Third-party Contract)",
+    ]:
+        assert classify(posting(title=title)) is not Category.CAMPUS, title
+
+
+def test_a_melbourne_peer_advisor_clears_the_notification_threshold():
+    """Classification alone is not enough; it has to survive NOTIFY_MIN_SCORE."""
+    job = posting(title="Global Experience Peer Advisor", location="Melbourne")
+    result, _ = score(job, classify(job))
+    assert result >= 20

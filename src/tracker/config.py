@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     smtp_username: str = ""
     smtp_password: str = ""
 
+    enable_gmail: bool = True
     gmail_credentials_file: str = "credentials.json"
     gmail_token_file: str = "token.json"
     gmail_query: str = "from:(careercentre.me) newer_than:7d"
